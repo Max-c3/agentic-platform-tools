@@ -1,0 +1,13 @@
+tools:
+  metaview.enrich_candidate_profiles:
+    read_write: read
+    allowed_entities: [candidate, profile]
+    integration: metaview
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 40
+      batch_size: 100
+      concurrency: 4
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]

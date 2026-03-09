@@ -1,0 +1,64 @@
+{
+  "tools": [
+    {
+      "anti_patterns": [
+        "empty profiles"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "rate_limit",
+        "upstream_unavailable"
+      ],
+      "description": "Enrich candidate profiles in Metaview.",
+      "display_name": "Enrich Candidate Profiles",
+      "examples": [
+        "profiles=[...]"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "profiles": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Profiles",
+            "type": "array"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "metaview",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "dedupe_report": {
+            "additionalProperties": true,
+            "title": "Dedupe Report",
+            "type": "object"
+          }
+        },
+        "required": [
+          "candidates",
+          "dedupe_report"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/metaview/actions/enrich_candidate_profiles.py",
+      "tool_id": "metaview.enrich_candidate_profiles",
+      "version": "2.0.0"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+tools:
+  harmonic.find_similar_profiles:
+    read_write: read
+    allowed_entities: [candidate, profile]
+    integration: harmonic
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 40
+      batch_size: 100
+      concurrency: 4
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  harmonic.enrich_person:
+    read_write: write
+    allowed_entities: [candidate, profile]
+    integration: harmonic
+    approval_mode: checkpoint
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 50
+      concurrency: 4
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  harmonic.enrich_company:
+    read_write: write
+    allowed_entities: [company]
+    integration: harmonic
+    approval_mode: checkpoint
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 50
+      concurrency: 4
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  harmonic.get_people_saved_search_results_with_metadata:
+    read_write: read
+    allowed_entities: [candidate, profile, saved_search]
+    integration: harmonic
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 40
+      batch_size: 100
+      concurrency: 4
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  harmonic.search_companies_by_natural_language:
+    read_write: read
+    allowed_entities: [company, search]
+    integration: harmonic
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 100
+      concurrency: 4
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  harmonic.get_employees_by_company:
+    read_write: read
+    allowed_entities: [company, candidate, profile]
+    integration: harmonic
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 100
+      concurrency: 4
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  harmonic.get_team_network_connections_to_company:
+    read_write: read
+    allowed_entities: [company, connection, candidate]
+    integration: harmonic
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 100
+      concurrency: 4
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]

@@ -1,0 +1,354 @@
+{
+  "tools": [
+    {
+      "anti_patterns": [
+        "empty note"
+      ],
+      "approval_class": "checkpoint_high",
+      "common_failures": [
+        "candidate_not_found"
+      ],
+      "description": "Add a note to a Gem candidate profile.",
+      "display_name": "Add Candidate Note",
+      "examples": [
+        "candidate_id='c1', note='Strong fit'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "candidate_id": {
+            "minLength": 1,
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "note": {
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "note"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "gem",
+      "is_write": true,
+      "output_schema": {
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "provider_response": {
+            "additionalProperties": true,
+            "title": "Provider Response",
+            "type": "object"
+          },
+          "user_id": {
+            "default": "",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "note"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "Writes a note to Gem candidate profile.",
+      "source_path": "app/tools/gem/actions/add_candidate_note.py",
+      "tool_id": "gem.add_candidate_note",
+      "version": "2.1.0"
+    },
+    {
+      "anti_patterns": [
+        "profiles empty"
+      ],
+      "approval_class": "checkpoint_low",
+      "common_failures": [
+        "invalid_project_id",
+        "profile_validation_error"
+      ],
+      "description": "Import/upsert profiles and add them to a Gem project.",
+      "display_name": "Add Profiles To Gem Project",
+      "examples": [
+        "project_id='proj_123'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "profiles": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Profiles",
+            "type": "array"
+          },
+          "project_id": {
+            "minLength": 2,
+            "title": "Project Id",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "gem",
+      "is_write": true,
+      "output_schema": {
+        "properties": {
+          "added_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Added Candidate Ids",
+            "type": "array"
+          },
+          "mapping": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Mapping",
+            "type": "array"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "provider_response": {
+            "additionalProperties": true,
+            "title": "Provider Response",
+            "type": "object"
+          },
+          "user_id": {
+            "default": "",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "Writes candidates into Gem project membership.",
+      "source_path": "app/tools/gem/actions/add_profiles_to_project.py",
+      "tool_id": "gem.add_profiles_to_project",
+      "version": "2.1.0"
+    },
+    {
+      "anti_patterns": [
+        "project_name too short"
+      ],
+      "approval_class": "checkpoint_low",
+      "common_failures": [
+        "invalid_project_name"
+      ],
+      "description": "Create a project in Gem.",
+      "display_name": "Create Gem Project",
+      "examples": [
+        "project_name='Backend Hiring Sprint'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "project_name": {
+            "minLength": 2,
+            "title": "Project Name",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "project_name"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "gem",
+      "is_write": true,
+      "output_schema": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "provider_response": {
+            "additionalProperties": true,
+            "title": "Provider Response",
+            "type": "object"
+          },
+          "user_id": {
+            "default": "",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "name"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "Creates a project in Gem.",
+      "source_path": "app/tools/gem/actions/create_project.py",
+      "tool_id": "gem.create_project",
+      "version": "2.1.0"
+    },
+    {
+      "anti_patterns": [
+        "empty key"
+      ],
+      "approval_class": "checkpoint_high",
+      "common_failures": [
+        "invalid_key"
+      ],
+      "description": "Set a custom value field on a Gem candidate.",
+      "display_name": "Set Candidate Custom Value",
+      "examples": [
+        "key='priority_tier', value='A'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "candidate_id": {
+            "minLength": 1,
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "key": {
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Project Id"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "key",
+          "value"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "gem",
+      "is_write": true,
+      "output_schema": {
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "custom_field_id": {
+            "default": "",
+            "title": "Custom Field Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "provider_response": {
+            "additionalProperties": true,
+            "title": "Provider Response",
+            "type": "object"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "key",
+          "value"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "Writes custom field to Gem candidate profile.",
+      "source_path": "app/tools/gem/actions/set_custom_value.py",
+      "tool_id": "gem.set_custom_value",
+      "version": "2.1.0"
+    }
+  ]
+}

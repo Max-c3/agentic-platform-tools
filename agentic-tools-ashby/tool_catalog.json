@@ -1,0 +1,743 @@
+{
+  "tools": [
+    {
+      "anti_patterns": [
+        "sample_size > 200"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "rate_limit",
+        "upstream_unavailable"
+      ],
+      "description": "Audit hire coverage quality and data completeness from Ashby. Returns diagnostics, confidence, and aggregate missing-field signals.",
+      "display_name": "Audit Hire Coverage",
+      "examples": [
+        "sample_size=50",
+        "sample_size=100, filters={technical_only:true}",
+        "sample_size=25, require_fields=['candidate_id','email']"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "$defs": {
+          "Filters": {
+            "properties": {
+              "candidate_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Candidate Ids",
+                "type": "array"
+              },
+              "department_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Department Ids",
+                "type": "array"
+              },
+              "keywords": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Keywords",
+                "type": "array"
+              },
+              "location_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Location Ids",
+                "type": "array"
+              },
+              "status": {
+                "items": {
+                  "const": "hired",
+                  "type": "string"
+                },
+                "title": "Status",
+                "type": "array"
+              },
+              "technical_only": {
+                "default": false,
+                "title": "Technical Only",
+                "type": "boolean"
+              }
+            },
+            "title": "Filters",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "filters": {
+            "$ref": "#/$defs/Filters"
+          },
+          "max_scan_pages": {
+            "anyOf": [
+              {
+                "maximum": 200,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Scan Pages"
+          },
+          "require_fields": {
+            "items": {
+              "enum": [
+                "candidate_id",
+                "name",
+                "email",
+                "linkedin",
+                "job_title",
+                "status",
+                "hired_at",
+                "created_at",
+                "updated_at",
+                "department_id",
+                "location_id"
+              ],
+              "type": "string"
+            },
+            "title": "Require Fields",
+            "type": "array"
+          },
+          "sample_size": {
+            "default": 50,
+            "maximum": 200,
+            "minimum": 1,
+            "title": "Sample Size",
+            "type": "integer"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "ashby",
+      "is_write": false,
+      "output_schema": {
+        "$defs": {
+          "Coverage": {
+            "properties": {
+              "by_department": {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "title": "By Department",
+                "type": "object"
+              },
+              "by_location": {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "title": "By Location",
+                "type": "object"
+              },
+              "missing_email_count": {
+                "title": "Missing Email Count",
+                "type": "integer"
+              },
+              "missing_linkedin_count": {
+                "title": "Missing Linkedin Count",
+                "type": "integer"
+              },
+              "returned_count": {
+                "title": "Returned Count",
+                "type": "integer"
+              },
+              "sample_size": {
+                "title": "Sample Size",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "sample_size",
+              "returned_count",
+              "missing_email_count",
+              "missing_linkedin_count",
+              "by_department",
+              "by_location"
+            ],
+            "title": "Coverage",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "coverage": {
+            "$ref": "#/$defs/Coverage"
+          },
+          "diagnostics": {
+            "additionalProperties": true,
+            "title": "Diagnostics",
+            "type": "object"
+          },
+          "sample_hires": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sample Hires",
+            "type": "array"
+          }
+        },
+        "required": [
+          "diagnostics",
+          "coverage",
+          "confidence",
+          "sample_hires"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/ashby/actions/audit_hire_coverage.py",
+      "tool_id": "ashby.audit_hire_coverage",
+      "version": "1.0.0"
+    },
+    {
+      "anti_patterns": [
+        "count > 100"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "rate_limit",
+        "upstream_unavailable"
+      ],
+      "description": "Pull recent hires from Ashby with deterministic default semantics (global_latest_exact, hired_at desc, strict_count) and bounded strategy knobs.",
+      "display_name": "Get Recent Hires",
+      "examples": [
+        "count=10",
+        "count=25, keywords=['kernel', 'ml'], retrieval_policy='strict_count'",
+        "count=10, department_ids=['engineering'], location_ids=['sf']"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Candidate Ids",
+            "type": "array"
+          },
+          "count": {
+            "default": 10,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Count",
+            "type": "integer"
+          },
+          "department_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Department Ids",
+            "type": "array"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "location_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Location Ids",
+            "type": "array"
+          },
+          "max_scan_pages": {
+            "anyOf": [
+              {
+                "maximum": 200,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Scan Pages"
+          },
+          "require_fields": {
+            "items": {
+              "enum": [
+                "candidate_id",
+                "name",
+                "email",
+                "linkedin",
+                "job_title"
+              ],
+              "type": "string"
+            },
+            "title": "Require Fields",
+            "type": "array"
+          },
+          "retrieval_policy": {
+            "default": "strict_count",
+            "enum": [
+              "strict_count",
+              "fast_sample"
+            ],
+            "title": "Retrieval Policy",
+            "type": "string"
+          },
+          "role_context": {
+            "default": "",
+            "title": "Role Context",
+            "type": "string"
+          },
+          "selection_mode": {
+            "default": "global_latest_exact",
+            "enum": [
+              "global_latest_exact",
+              "global_latest_best_effort",
+              "fast_sample"
+            ],
+            "title": "Selection Mode",
+            "type": "string"
+          },
+          "sort_by": {
+            "default": "hired_at",
+            "enum": [
+              "hired_at",
+              "created_at",
+              "updated_at"
+            ],
+            "title": "Sort By",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": "desc",
+            "enum": [
+              "desc",
+              "asc"
+            ],
+            "title": "Sort Order",
+            "type": "string"
+          },
+          "status": {
+            "items": {
+              "const": "hired",
+              "type": "string"
+            },
+            "title": "Status",
+            "type": "array"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "ashby",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "diagnostics": {
+            "additionalProperties": true,
+            "title": "Diagnostics",
+            "type": "object"
+          },
+          "hires": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Hires",
+            "type": "array"
+          }
+        },
+        "required": [
+          "hires",
+          "diagnostics",
+          "confidence"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/ashby/actions/get_recent_hires.py",
+      "tool_id": "ashby.get_recent_hires",
+      "version": "1.2.0"
+    },
+    {
+      "anti_patterns": [
+        "count > 100"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "rate_limit",
+        "upstream_unavailable"
+      ],
+      "description": "Pull recent technical hires from Ashby with deterministic default semantics (global_latest_exact, hired_at desc, strict_count) and bounded strategy knobs.",
+      "display_name": "Get Recent Technical Hires",
+      "examples": [
+        "count=10, role_context='backend kernel engineer'",
+        "count=20, keywords=['cuda', 'kernel'], retrieval_policy='strict_count'",
+        "count=5, sort_by='created_at', sort_order='desc'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Candidate Ids",
+            "type": "array"
+          },
+          "count": {
+            "default": 10,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Count",
+            "type": "integer"
+          },
+          "department_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Department Ids",
+            "type": "array"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "location_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Location Ids",
+            "type": "array"
+          },
+          "max_scan_pages": {
+            "anyOf": [
+              {
+                "maximum": 200,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Scan Pages"
+          },
+          "require_fields": {
+            "items": {
+              "enum": [
+                "candidate_id",
+                "name",
+                "email",
+                "linkedin",
+                "job_title"
+              ],
+              "type": "string"
+            },
+            "title": "Require Fields",
+            "type": "array"
+          },
+          "retrieval_policy": {
+            "default": "strict_count",
+            "enum": [
+              "strict_count",
+              "fast_sample"
+            ],
+            "title": "Retrieval Policy",
+            "type": "string"
+          },
+          "role_context": {
+            "default": "",
+            "title": "Role Context",
+            "type": "string"
+          },
+          "selection_mode": {
+            "default": "global_latest_exact",
+            "enum": [
+              "global_latest_exact",
+              "global_latest_best_effort",
+              "fast_sample"
+            ],
+            "title": "Selection Mode",
+            "type": "string"
+          },
+          "sort_by": {
+            "default": "hired_at",
+            "enum": [
+              "hired_at",
+              "created_at",
+              "updated_at"
+            ],
+            "title": "Sort By",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": "desc",
+            "enum": [
+              "desc",
+              "asc"
+            ],
+            "title": "Sort Order",
+            "type": "string"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "ashby",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "diagnostics": {
+            "additionalProperties": true,
+            "title": "Diagnostics",
+            "type": "object"
+          },
+          "hires": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Hires",
+            "type": "array"
+          }
+        },
+        "required": [
+          "hires",
+          "diagnostics",
+          "confidence"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/ashby/actions/get_recent_technical_hires.py",
+      "tool_id": "ashby.get_recent_technical_hires",
+      "version": "2.3.0"
+    },
+    {
+      "anti_patterns": [
+        "count > 200",
+        "free-form untyped filters"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "rate_limit",
+        "upstream_unavailable"
+      ],
+      "description": "Search hires in Ashby with bounded filters and strategy knobs. Guarantee: strict_count scans until requested count is reached or the source is exhausted within configured page budget.",
+      "display_name": "Search Hires",
+      "examples": [
+        "count=10, filters={status:['hired'], keywords:['backend']}",
+        "count=50, sort_by='created_at', retrieval_policy='fast_sample'",
+        "count=20, filters={department_ids:['engineering'], location_ids:['sf']}"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "$defs": {
+          "Filters": {
+            "properties": {
+              "candidate_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Candidate Ids",
+                "type": "array"
+              },
+              "department_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Department Ids",
+                "type": "array"
+              },
+              "keywords": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Keywords",
+                "type": "array"
+              },
+              "location_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Location Ids",
+                "type": "array"
+              },
+              "status": {
+                "items": {
+                  "const": "hired",
+                  "type": "string"
+                },
+                "title": "Status",
+                "type": "array"
+              },
+              "technical_only": {
+                "default": false,
+                "title": "Technical Only",
+                "type": "boolean"
+              }
+            },
+            "title": "Filters",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "count": {
+            "default": 10,
+            "maximum": 200,
+            "minimum": 1,
+            "title": "Count",
+            "type": "integer"
+          },
+          "filters": {
+            "$ref": "#/$defs/Filters"
+          },
+          "max_scan_pages": {
+            "anyOf": [
+              {
+                "maximum": 200,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Scan Pages"
+          },
+          "require_fields": {
+            "items": {
+              "enum": [
+                "candidate_id",
+                "name",
+                "email",
+                "linkedin",
+                "job_title",
+                "status",
+                "hired_at",
+                "created_at",
+                "updated_at",
+                "department_id",
+                "location_id"
+              ],
+              "type": "string"
+            },
+            "title": "Require Fields",
+            "type": "array"
+          },
+          "retrieval_policy": {
+            "default": "strict_count",
+            "enum": [
+              "strict_count",
+              "fast_sample"
+            ],
+            "title": "Retrieval Policy",
+            "type": "string"
+          },
+          "selection_mode": {
+            "default": "global_latest_best_effort",
+            "enum": [
+              "global_latest_exact",
+              "global_latest_best_effort",
+              "fast_sample"
+            ],
+            "title": "Selection Mode",
+            "type": "string"
+          },
+          "sort_by": {
+            "default": "hired_at",
+            "enum": [
+              "hired_at",
+              "created_at",
+              "updated_at"
+            ],
+            "title": "Sort By",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": "desc",
+            "enum": [
+              "desc",
+              "asc"
+            ],
+            "title": "Sort Order",
+            "type": "string"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "ashby",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "diagnostics": {
+            "additionalProperties": true,
+            "title": "Diagnostics",
+            "type": "object"
+          },
+          "hires": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Hires",
+            "type": "array"
+          }
+        },
+        "required": [
+          "hires",
+          "diagnostics",
+          "confidence"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/ashby/actions/search_hires.py",
+      "tool_id": "ashby.search_hires",
+      "version": "1.1.0"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+tools:
+  ashby.get_recent_hires:
+    read_write: read
+    allowed_entities: [candidate, hire]
+    integration: ashby
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 50
+      concurrency: 3
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  ashby.get_recent_technical_hires:
+    read_write: read
+    allowed_entities: [candidate, hire]
+    integration: ashby
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 50
+      concurrency: 3
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  ashby.search_hires:
+    read_write: read
+    allowed_entities: [candidate, hire]
+    integration: ashby
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 100
+      concurrency: 3
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  ashby.audit_hire_coverage:
+    read_write: read
+    allowed_entities: [candidate, hire, audit]
+    integration: ashby
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]

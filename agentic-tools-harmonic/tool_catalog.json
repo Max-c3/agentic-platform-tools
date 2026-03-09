@@ -1,0 +1,696 @@
+{
+  "tools": [
+    {
+      "anti_patterns": [
+        "empty payload and no identifiers"
+      ],
+      "approval_class": "checkpoint_low",
+      "common_failures": [
+        "upstream_unavailable",
+        "invalid_identifier"
+      ],
+      "description": "Trigger Harmonic company enrichment from identity hints.",
+      "display_name": "Enrich Company",
+      "examples": [
+        "domain='example.com'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "company_urn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Company Urn"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Domain"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "website_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Website Url"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "harmonic",
+      "is_write": true,
+      "output_schema": {
+        "properties": {
+          "enriched_company_urn": {
+            "default": "",
+            "title": "Enriched Company Urn",
+            "type": "string"
+          },
+          "enrichment_urn": {
+            "default": "",
+            "title": "Enrichment Urn",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "raw": {
+            "additionalProperties": true,
+            "title": "Raw",
+            "type": "object"
+          },
+          "status": {
+            "default": "",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "Triggers enrichment process in Harmonic.",
+      "source_path": "app/tools/harmonic/actions/enrich_company.py",
+      "tool_id": "harmonic.enrich_company",
+      "version": "1.0.0"
+    },
+    {
+      "anti_patterns": [
+        "empty payload and no identifiers"
+      ],
+      "approval_class": "checkpoint_low",
+      "common_failures": [
+        "upstream_unavailable",
+        "invalid_identifier"
+      ],
+      "description": "Trigger Harmonic person enrichment from identity hints.",
+      "display_name": "Enrich Person",
+      "examples": [
+        "linkedin_url='https://linkedin.com/in/example'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Company Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Email"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Full Name"
+          },
+          "linkedin_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Linkedin Url"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "person_urn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Person Urn"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "harmonic",
+      "is_write": true,
+      "output_schema": {
+        "properties": {
+          "enriched_person_urn": {
+            "default": "",
+            "title": "Enriched Person Urn",
+            "type": "string"
+          },
+          "enrichment_urn": {
+            "default": "",
+            "title": "Enrichment Urn",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "raw": {
+            "additionalProperties": true,
+            "title": "Raw",
+            "type": "object"
+          },
+          "status": {
+            "default": "",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "Triggers enrichment process in Harmonic.",
+      "source_path": "app/tools/harmonic/actions/enrich_person.py",
+      "tool_id": "harmonic.enrich_person",
+      "version": "1.0.0"
+    },
+    {
+      "anti_patterns": [
+        "missing seed profiles"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "rate_limit",
+        "upstream_unavailable"
+      ],
+      "description": "Find similar candidate profiles in Harmonic.",
+      "display_name": "Find Similar Profiles",
+      "examples": [
+        "per_seed=10"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "per_seed": {
+            "default": 10,
+            "maximum": 50,
+            "minimum": 1,
+            "title": "Per Seed",
+            "type": "integer"
+          },
+          "seed_profiles": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Seed Profiles",
+            "type": "array"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "harmonic",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "dedupe_report": {
+            "additionalProperties": true,
+            "title": "Dedupe Report",
+            "type": "object"
+          }
+        },
+        "required": [
+          "candidates",
+          "dedupe_report"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/harmonic/actions/find_similar_profiles.py",
+      "tool_id": "harmonic.find_similar_profiles",
+      "version": "2.0.0"
+    },
+    {
+      "anti_patterns": [
+        "size > 1000"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "company_not_found",
+        "upstream_unavailable"
+      ],
+      "description": "Fetch employees for a company from Harmonic.",
+      "display_name": "Get Employees By Company",
+      "examples": [
+        "company_id_or_urn='urn:harmonic:company:123'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "company_id_or_urn": {
+            "minLength": 1,
+            "title": "Company Id Or Urn",
+            "type": "string"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cursor"
+          },
+          "size": {
+            "default": 100,
+            "maximum": 1000,
+            "minimum": 1,
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "company_id_or_urn"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "harmonic",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "company_id_or_urn": {
+            "title": "Company Id Or Urn",
+            "type": "string"
+          },
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "dedupe_report": {
+            "additionalProperties": true,
+            "title": "Dedupe Report",
+            "type": "object"
+          },
+          "employees": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Employees",
+            "type": "array"
+          },
+          "page_info": {
+            "additionalProperties": true,
+            "title": "Page Info",
+            "type": "object"
+          }
+        },
+        "required": [
+          "company_id_or_urn"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/harmonic/actions/get_employees_by_company.py",
+      "tool_id": "harmonic.get_employees_by_company",
+      "version": "1.0.0"
+    },
+    {
+      "anti_patterns": [
+        "size > 1000"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "saved_search_not_found",
+        "upstream_unavailable"
+      ],
+      "description": "Retrieve people saved search results and metadata from Harmonic.",
+      "display_name": "Get People Saved Search Results With Metadata",
+      "examples": [
+        "saved_search_id_or_urn='urn:harmonic:saved_search:123'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cursor"
+          },
+          "saved_search_id_or_urn": {
+            "minLength": 1,
+            "title": "Saved Search Id Or Urn",
+            "type": "string"
+          },
+          "size": {
+            "default": 100,
+            "maximum": 1000,
+            "minimum": 1,
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "saved_search_id_or_urn"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "harmonic",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "dedupe_report": {
+            "additionalProperties": true,
+            "title": "Dedupe Report",
+            "type": "object"
+          },
+          "page_info": {
+            "additionalProperties": true,
+            "title": "Page Info",
+            "type": "object"
+          },
+          "raw_metadata": {
+            "additionalProperties": true,
+            "title": "Raw Metadata",
+            "type": "object"
+          },
+          "saved_search_id_or_urn": {
+            "title": "Saved Search Id Or Urn",
+            "type": "string"
+          }
+        },
+        "required": [
+          "saved_search_id_or_urn"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/harmonic/actions/get_people_saved_search_results_with_metadata.py",
+      "tool_id": "harmonic.get_people_saved_search_results_with_metadata",
+      "version": "1.0.0"
+    },
+    {
+      "anti_patterns": [
+        "size > 1000"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "company_not_found",
+        "upstream_unavailable"
+      ],
+      "description": "Fetch team network connections to a company from Harmonic.",
+      "display_name": "Get Team Network Connections To Company",
+      "examples": [
+        "company_id_or_urn='urn:harmonic:company:123'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "company_id_or_urn": {
+            "minLength": 1,
+            "title": "Company Id Or Urn",
+            "type": "string"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cursor"
+          },
+          "size": {
+            "default": 100,
+            "maximum": 1000,
+            "minimum": 1,
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "company_id_or_urn"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "harmonic",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "company_id_or_urn": {
+            "title": "Company Id Or Urn",
+            "type": "string"
+          },
+          "connections": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Connections",
+            "type": "array"
+          },
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "page_info": {
+            "additionalProperties": true,
+            "title": "Page Info",
+            "type": "object"
+          },
+          "source_endpoint": {
+            "default": "",
+            "title": "Source Endpoint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id_or_urn"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/harmonic/actions/get_team_network_connections_to_company.py",
+      "tool_id": "harmonic.get_team_network_connections_to_company",
+      "version": "1.0.0"
+    },
+    {
+      "anti_patterns": [
+        "empty query"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "upstream_unavailable",
+        "invalid_query"
+      ],
+      "description": "Run Harmonic natural-language company search via search_agent.",
+      "display_name": "Search Companies By Natural Language",
+      "examples": [
+        "query='Series B fintech companies with strong engineering teams'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cursor"
+          },
+          "query": {
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "similarity_threshold": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Similarity Threshold"
+          },
+          "size": {
+            "default": 25,
+            "maximum": 1000,
+            "minimum": 1,
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "harmonic",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "companies": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Companies",
+            "type": "array"
+          },
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "page_info": {
+            "additionalProperties": true,
+            "title": "Page Info",
+            "type": "object"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "query_interpretation": {
+            "additionalProperties": true,
+            "title": "Query Interpretation",
+            "type": "object"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/harmonic/actions/search_companies_by_natural_language.py",
+      "tool_id": "harmonic.search_companies_by_natural_language",
+      "version": "1.0.0"
+    }
+  ]
+}
