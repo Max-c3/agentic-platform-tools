@@ -262,6 +262,350 @@
     },
     {
       "anti_patterns": [
+        "empty candidate_id"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "unknown_candidate",
+        "upstream_unavailable"
+      ],
+      "description": "Fetch a Gem candidate by id with the provider's full candidate payload.",
+      "display_name": "Get Gem Candidate",
+      "examples": [
+        "candidate_id='candidate_123'"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "candidate_id": {
+            "minLength": 1,
+            "title": "Candidate Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "gem",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "candidate": {
+            "additionalProperties": true,
+            "title": "Candidate",
+            "type": "object"
+          },
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/gem/actions/get_candidate.py",
+      "tool_id": "gem.get_candidate",
+      "version": "1.0.0"
+    },
+    {
+      "anti_patterns": [
+        "page_size > 100"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "unknown_project",
+        "invalid_pagination",
+        "upstream_unavailable"
+      ],
+      "description": "List candidates in a Gem project and optionally hydrate each entry with full candidate data.",
+      "display_name": "List Gem Project Candidates",
+      "examples": [
+        "project_id='proj_123'",
+        "project_id='proj_123', page=2, page_size=50, include_candidates=True"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "added_after": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Added After"
+          },
+          "added_before": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Added Before"
+          },
+          "include_candidates": {
+            "default": true,
+            "title": "Include Candidates",
+            "type": "boolean"
+          },
+          "page": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "project_id": {
+            "minLength": 1,
+            "title": "Project Id",
+            "type": "string"
+          },
+          "sort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "asc",
+                  "desc"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sort"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "gem",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "pagination": {
+            "additionalProperties": true,
+            "title": "Pagination",
+            "type": "object"
+          },
+          "project": {
+            "additionalProperties": true,
+            "title": "Project",
+            "type": "object"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "unresolved_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unresolved Candidate Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/gem/actions/list_project_candidates.py",
+      "tool_id": "gem.list_project_candidates",
+      "version": "1.0.0"
+    },
+    {
+      "anti_patterns": [
+        "page_size > 100"
+      ],
+      "approval_class": "none",
+      "common_failures": [
+        "invalid_pagination",
+        "upstream_unavailable"
+      ],
+      "description": "List existing Gem projects with pagination and optional access filters.",
+      "display_name": "List Gem Projects",
+      "examples": [
+        "page=1, page_size=20",
+        "readable_by_user_id='user_123', is_archived=False"
+      ],
+      "function_name": "run",
+      "input_schema": {
+        "properties": {
+          "created_after": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created After"
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created Before"
+          },
+          "is_archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Is Archived"
+          },
+          "owner_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Owner User Id"
+          },
+          "page": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "readable_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Readable By User Id"
+          },
+          "sort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "asc",
+                  "desc"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sort"
+          },
+          "writable_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Writable By User Id"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "integration": "gem",
+      "is_write": false,
+      "output_schema": {
+        "properties": {
+          "pagination": {
+            "additionalProperties": true,
+            "title": "Pagination",
+            "type": "object"
+          },
+          "projects": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "title": "Output",
+        "type": "object"
+      },
+      "owner": "recruiting-platform",
+      "side_effects": "None",
+      "source_path": "app/tools/gem/actions/list_projects.py",
+      "tool_id": "gem.list_projects",
+      "version": "1.0.0"
+    },
+    {
+      "anti_patterns": [
         "empty key"
       ],
       "approval_class": "checkpoint_high",

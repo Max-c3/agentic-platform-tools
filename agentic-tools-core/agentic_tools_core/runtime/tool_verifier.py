@@ -23,6 +23,9 @@ class ToolOutputVerifier:
             "harmonic.get_employees_by_company": self._verify_harmonic_company_employees,
             "harmonic.get_team_network_connections_to_company": self._verify_harmonic_team_connections,
             "metaview.enrich_candidate_profiles": self._verify_metaview_enrichment,
+            "gem.list_projects": self._verify_gem_list_projects,
+            "gem.list_project_candidates": self._verify_gem_list_project_candidates,
+            "gem.get_candidate": self._verify_gem_get_candidate,
             "gem.create_project": self._verify_gem_create_project,
             "gem.add_profiles_to_project": self._verify_gem_add_profiles,
             "gem.add_candidate_note": self._verify_gem_add_note,
@@ -671,6 +674,190 @@ class ToolOutputVerifier:
         if preview and not bool(output.get("provider_response", {}).get("preview", False)):
             issues.append(_warn("missing_preview_marker", "Preview output missing provider_response.preview=true."))
         return issues, {"candidate_id": output_candidate_id, "key": output_key}
+
+    def _verify_gem_list_projects(
+        self, tool_input: dict[str, Any], output: dict[str, Any], preview: bool
+    ) -> tuple[list[VerificationIssue], dict[str, Any]]:
+        del preview
+        issues: list[VerificationIssue] = []
+        projects = _as_list(output.get("projects"))
+        pagination = output.get("pagination")
+        requested_page_size = _as_int(tool_input.get("page_size"), default=20)
+
+        if not isinstance(pagination, dict):
+            issues.append(_error("missing_pagination", "Gem list_projects output missing pagination object."))
+            pagination = {}
+        if requested_page_size > 0 and len(projects) > requested_page_size:
+            issues.append(
+                _error(
+                    "result_count_exceeds_page_size",
+                    "Gem list_projects returned more projects than requested page_size.",
+                    {"requested_page_size": requested_page_size, "returned_count": len(projects)},
+                )
+            )
+
+        seen_project_ids: set[str] = set()
+        duplicate_indexes: list[int] = []
+        missing_id_indexes: list[int] = []
+        for idx, item in enumerate(projects):
+            if not isinstance(item, dict):
+                issues.append(_error("invalid_project_item", "projects item must be an object.", {"index": idx}))
+                continue
+            project_id = _as_str(item.get("project_id")) or _as_str(item.get("id"))
+            if not project_id:
+                missing_id_indexes.append(idx)
+                continue
+            if project_id in seen_project_ids:
+                duplicate_indexes.append(idx)
+            seen_project_ids.add(project_id)
+        if missing_id_indexes:
+            issues.append(
+                _error("missing_project_id", "Some projects are missing project identifiers.", {"indexes": missing_id_indexes[:20]})
+            )
+        if duplicate_indexes:
+            issues.append(
+                _error("duplicate_project_ids", "Some projects appear multiple times in the result.", {"indexes": duplicate_indexes[:20]})
+            )
+        return issues, {
+            "returned_count": len(projects),
+            "page": _as_int(pagination.get("page"), default=_as_int(tool_input.get("page"), default=1)),
+        }
+
+    def _verify_gem_list_project_candidates(
+        self, tool_input: dict[str, Any], output: dict[str, Any], preview: bool
+    ) -> tuple[list[VerificationIssue], dict[str, Any]]:
+        del preview
+        issues: list[VerificationIssue] = []
+        input_project_id = _as_str(tool_input.get("project_id"))
+        output_project_id = _as_str(output.get("project_id"))
+        include_candidates = bool(tool_input.get("include_candidates", True))
+        entries = _as_list(output.get("entries"))
+        unresolved_candidate_ids = [item for item in _as_list(output.get("unresolved_candidate_ids")) if _as_str(item)]
+        pagination = output.get("pagination")
+        requested_page_size = _as_int(tool_input.get("page_size"), default=20)
+
+        if not output_project_id:
+            issues.append(_error("missing_project_id", "Gem list_project_candidates output missing project_id."))
+        if input_project_id and output_project_id and input_project_id != output_project_id:
+            issues.append(
+                _error(
+                    "project_id_mismatch",
+                    "Gem list_project_candidates output project_id does not match input.",
+                    {"input": input_project_id, "output": output_project_id},
+                )
+            )
+        if not isinstance(pagination, dict):
+            issues.append(_error("missing_pagination", "Gem list_project_candidates output missing pagination object."))
+            pagination = {}
+        if requested_page_size > 0 and len(entries) > requested_page_size:
+            issues.append(
+                _error(
+                    "result_count_exceeds_page_size",
+                    "Gem list_project_candidates returned more entries than requested page_size.",
+                    {"requested_page_size": requested_page_size, "returned_count": len(entries)},
+                )
+            )
+
+        seen_candidate_ids: set[str] = set()
+        duplicate_indexes: list[int] = []
+        missing_candidate_indexes: list[int] = []
+        unresolved_set = set(unresolved_candidate_ids)
+        for idx, item in enumerate(entries):
+            if not isinstance(item, dict):
+                issues.append(_error("invalid_entry_item", "entries item must be an object.", {"index": idx}))
+                continue
+            candidate_id = _as_str(item.get("candidate_id"))
+            if not candidate_id:
+                missing_candidate_indexes.append(idx)
+                continue
+            if candidate_id in seen_candidate_ids:
+                duplicate_indexes.append(idx)
+            seen_candidate_ids.add(candidate_id)
+
+            if include_candidates:
+                candidate = item.get("candidate")
+                if not isinstance(candidate, dict):
+                    issues.append(_warn("missing_candidate_payload", "entries item is missing hydrated candidate data.", {"index": idx}))
+                    continue
+                candidate_payload_id = _as_str(candidate.get("candidate_id")) or _as_str(candidate.get("id"))
+                if candidate and candidate_payload_id and candidate_payload_id != candidate_id:
+                    issues.append(
+                        _error(
+                            "candidate_id_mismatch",
+                            "Hydrated candidate payload does not match entries candidate_id.",
+                            {"index": idx, "entry_candidate_id": candidate_id, "candidate_payload_id": candidate_payload_id},
+                        )
+                    )
+                if candidate_id in unresolved_set and candidate:
+                    issues.append(
+                        _warn(
+                            "unresolved_candidate_had_payload",
+                            "Candidate was marked unresolved but a hydrated payload was also returned.",
+                            {"index": idx, "candidate_id": candidate_id},
+                        )
+                    )
+
+        if missing_candidate_indexes:
+            issues.append(
+                _error(
+                    "missing_candidate_id",
+                    "Some project candidate entries are missing candidate_id.",
+                    {"indexes": missing_candidate_indexes[:20]},
+                )
+            )
+        if duplicate_indexes:
+            issues.append(
+                _error(
+                    "duplicate_candidate_entries",
+                    "Some project candidate entries appear multiple times.",
+                    {"indexes": duplicate_indexes[:20]},
+                )
+            )
+        if include_candidates and unresolved_candidate_ids:
+            issues.append(
+                _warn(
+                    "unresolved_candidates",
+                    "Some project candidate ids could not be hydrated into full candidate payloads.",
+                    {"count": len(unresolved_candidate_ids)},
+                )
+            )
+        return issues, {
+            "returned_count": len(entries),
+            "hydrated_candidate_count": len(entries) - len(unresolved_candidate_ids) if include_candidates else 0,
+        }
+
+    def _verify_gem_get_candidate(
+        self, tool_input: dict[str, Any], output: dict[str, Any], preview: bool
+    ) -> tuple[list[VerificationIssue], dict[str, Any]]:
+        del preview
+        issues: list[VerificationIssue] = []
+        input_candidate_id = _as_str(tool_input.get("candidate_id"))
+        output_candidate_id = _as_str(output.get("candidate_id"))
+        candidate = output.get("candidate")
+
+        if not output_candidate_id:
+            issues.append(_error("missing_candidate_id", "Gem get_candidate output missing candidate_id."))
+        if input_candidate_id and output_candidate_id and input_candidate_id != output_candidate_id:
+            issues.append(
+                _error(
+                    "candidate_id_mismatch",
+                    "Gem get_candidate output candidate_id does not match input.",
+                    {"input": input_candidate_id, "output": output_candidate_id},
+                )
+            )
+        if not isinstance(candidate, dict) or not candidate:
+            issues.append(_error("missing_candidate_payload", "Gem get_candidate output missing candidate payload."))
+            candidate = {}
+        payload_candidate_id = _as_str(candidate.get("candidate_id")) or _as_str(candidate.get("id"))
+        if output_candidate_id and payload_candidate_id and output_candidate_id != payload_candidate_id:
+            issues.append(
+                _error(
+                    "payload_candidate_id_mismatch",
+                    "Gem candidate payload id does not match output candidate_id.",
+                    {"output_candidate_id": output_candidate_id, "payload_candidate_id": payload_candidate_id},
+                )
+            )
+        return issues, {"candidate_id": output_candidate_id}
 
 
 def _verify_hire_list_common(

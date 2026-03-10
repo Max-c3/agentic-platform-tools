@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import uuid
@@ -19,6 +20,22 @@ def _as_dict(payload: Any) -> dict[str, Any]:
 
 def _extract_id(payload: dict[str, Any]) -> str:
     return str(payload.get("id") or payload.get("candidate_id") or payload.get("project_id") or "").strip()
+
+
+def _normalize_project(payload: dict[str, Any]) -> dict[str, Any]:
+    project = dict(payload)
+    project_id = _extract_id(project)
+    if project_id:
+        project["project_id"] = project_id
+    return project
+
+
+def _normalize_candidate(payload: dict[str, Any]) -> dict[str, Any]:
+    candidate = dict(payload)
+    candidate_id = _extract_id(candidate)
+    if candidate_id:
+        candidate["candidate_id"] = candidate_id
+    return candidate
 
 
 def _normalize_name(profile: dict[str, Any]) -> tuple[str, str]:
@@ -123,6 +140,33 @@ def _extract_project_membership_conflicts(exc: IntegrationRequestError) -> list[
     return [str(item).strip() for item in raw if str(item).strip()]
 
 
+def _parse_pagination_header(raw: str, *, page: int, page_size: int, returned_count: int) -> dict[str, Any]:
+    pagination: dict[str, Any] = {
+        "page": page,
+        "page_size": page_size,
+        "returned_count": returned_count,
+    }
+    if not raw.strip():
+        return pagination
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        pagination["raw"] = raw
+        return pagination
+    if isinstance(parsed, dict):
+        pagination.update(parsed)
+    else:
+        pagination["raw"] = raw
+    pagination["page"] = int(pagination.get("page") or page)
+    pagination["page_size"] = int(pagination.get("page_size") or page_size)
+    pagination["returned_count"] = returned_count
+    return pagination
+
+
+def _chunked(items: list[str], size: int) -> list[list[str]]:
+    return [items[idx : idx + size] for idx in range(0, len(items), size)]
+
+
 class GemClient:
     def __init__(
         self,
@@ -139,13 +183,23 @@ class GemClient:
 
         self._users_path = os.getenv("GEM_ENDPOINT_USERS", "/v0/users")
         self._candidates_path = os.getenv("GEM_ENDPOINT_CANDIDATES", "/v0/candidates")
-        self._create_project_path = os.getenv("GEM_ENDPOINT_CREATE_PROJECT", "/v0/projects")
-        self._add_profiles_to_project_path = os.getenv(
-            "GEM_ENDPOINT_ADD_PROFILES_TO_PROJECT",
-            "/v0/projects/{project_id}/candidates",
+        self._projects_path = os.getenv(
+            "GEM_ENDPOINT_PROJECTS",
+            os.getenv("GEM_ENDPOINT_CREATE_PROJECT", "/v0/projects"),
         )
+        self._project_path = os.getenv("GEM_ENDPOINT_PROJECT", "/v0/projects/{project_id}")
+        self._project_candidates_path = os.getenv(
+            "GEM_ENDPOINT_PROJECT_CANDIDATES",
+            os.getenv(
+                "GEM_ENDPOINT_ADD_PROFILES_TO_PROJECT",
+                "/v0/projects/{project_id}/candidates",
+            ),
+        )
+        self._create_project_path = self._projects_path
+        self._add_profiles_to_project_path = self._project_candidates_path
         self._add_note_path = os.getenv("GEM_ENDPOINT_ADD_NOTE", "/v0/notes")
-        self._set_custom_value_path = os.getenv("GEM_ENDPOINT_SET_CUSTOM_VALUE", "/v0/candidates/{candidate_id}")
+        self._candidate_path = os.getenv("GEM_ENDPOINT_CANDIDATE", "/v0/candidates/{candidate_id}")
+        self._set_custom_value_path = os.getenv("GEM_ENDPOINT_SET_CUSTOM_VALUE", self._candidate_path)
         self._custom_fields_path = os.getenv("GEM_ENDPOINT_CUSTOM_FIELDS", "/v0/custom_fields")
 
         app_secret = os.getenv("GEM_APPLICATION_SECRET", "").strip()
@@ -190,6 +244,110 @@ class GemClient:
             raise IntegrationConfigError("gem: could not parse user id from /users response")
         self._default_user_id = resolved
         return resolved
+
+    def list_projects(
+        self,
+        *,
+        owner_user_id: Optional[str] = None,
+        readable_by_user_id: Optional[str] = None,
+        writable_by_user_id: Optional[str] = None,
+        is_archived: Optional[bool] = None,
+        created_after: Optional[int] = None,
+        created_before: Optional[int] = None,
+        sort: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if owner_user_id:
+            params["user_id"] = owner_user_id
+        if readable_by_user_id:
+            params["readable_by"] = readable_by_user_id
+        if writable_by_user_id:
+            params["writable_by"] = writable_by_user_id
+        if is_archived is not None:
+            params["is_archived"] = is_archived
+        if created_after is not None:
+            params["created_after"] = created_after
+        if created_before is not None:
+            params["created_before"] = created_before
+        if sort in {"asc", "desc"}:
+            params["sort"] = sort
+
+        data, pagination = self._request_with_pagination("GET", self._projects_path, params=params)
+        projects = [_normalize_project(item) for item in data if isinstance(item, dict)] if isinstance(data, list) else []
+        return {
+            "projects": projects,
+            "pagination": pagination,
+        }
+
+    def get_project(self, project_id: str) -> dict[str, Any]:
+        path = self._project_path.format(project_id=project_id)
+        data = self.http.request("GET", path)
+        body = _as_dict(data)
+        project = _normalize_project(body)
+        resolved_project_id = _extract_id(project) or project_id
+        return {
+            "project_id": resolved_project_id,
+            "project": project,
+        }
+
+    def list_project_candidates(
+        self,
+        *,
+        project_id: str,
+        page: int = 1,
+        page_size: int = 20,
+        added_after: Optional[int] = None,
+        added_before: Optional[int] = None,
+        sort: Optional[str] = None,
+        include_candidates: bool = True,
+    ) -> dict[str, Any]:
+        project_result = self.get_project(project_id)
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if added_after is not None:
+            params["added_after"] = added_after
+        if added_before is not None:
+            params["added_before"] = added_before
+        if sort in {"asc", "desc"}:
+            params["sort"] = sort
+
+        path = self._project_candidates_path.format(project_id=project_id)
+        data, pagination = self._request_with_pagination("GET", path, params=params)
+        memberships = [dict(item) for item in data if isinstance(item, dict)] if isinstance(data, list) else []
+        candidate_ids = [str(item.get("candidate_id") or "").strip() for item in memberships]
+        candidate_ids = [item for item in dict.fromkeys(candidate_ids) if item]
+        candidate_map = self._list_candidates_by_ids(candidate_ids) if include_candidates and candidate_ids else {}
+
+        entries: list[dict[str, Any]] = []
+        for membership in memberships:
+            candidate_id = str(membership.get("candidate_id") or "").strip()
+            entry = {
+                "candidate_id": candidate_id,
+                "added_at": membership.get("added_at"),
+                "candidate": candidate_map.get(candidate_id, {}) if include_candidates else {},
+            }
+            entries.append(entry)
+
+        unresolved_candidate_ids = [item for item in candidate_ids if item not in candidate_map] if include_candidates else []
+        return {
+            "project_id": project_result["project_id"],
+            "project": project_result["project"],
+            "entries": entries,
+            "pagination": pagination,
+            "unresolved_candidate_ids": unresolved_candidate_ids,
+        }
+
+    def get_candidate(self, candidate_id: str) -> dict[str, Any]:
+        path = self._candidate_path.format(candidate_id=candidate_id)
+        data = self.http.request("GET", path)
+        body = _as_dict(data)
+        candidate = _normalize_candidate(body)
+        resolved_candidate_id = _extract_id(candidate) or candidate_id
+        return {
+            "candidate_id": resolved_candidate_id,
+            "candidate": candidate,
+        }
 
     def create_project(
         self,
@@ -416,6 +574,88 @@ class GemClient:
         # Allow direct IDs when callers already know the Gem custom field id.
         return key.strip()
 
+    def _list_candidates_by_ids(self, candidate_ids: list[str]) -> dict[str, dict[str, Any]]:
+        candidates: dict[str, dict[str, Any]] = {}
+        for chunk in _chunked([item for item in dict.fromkeys(candidate_ids) if item], 20):
+            data = self.http.request(
+                "GET",
+                self._candidates_path,
+                params={
+                    "candidate_ids": chunk,
+                    "page": 1,
+                    "page_size": len(chunk),
+                },
+            )
+            if not isinstance(data, list):
+                continue
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                candidate = _normalize_candidate(item)
+                candidate_id = _extract_id(candidate)
+                if candidate_id:
+                    candidates[candidate_id] = candidate
+        return candidates
+
+    def _request_with_pagination(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[dict[str, Any]] = None,
+        json_body: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
+    ) -> tuple[Any, dict[str, Any]]:
+        url = f"{self.http.base_url}/{path.lstrip('/')}"
+        request_headers = self.http._build_headers()
+        if headers:
+            request_headers.update(headers)
+        auth = httpx.BasicAuth(self.http.api_key, "") if self.http.auth_mode == "basic" else None
+        response = self.http.client.request(
+            method=method,
+            url=url,
+            params=params,
+            json=json_body,
+            headers=request_headers,
+            auth=auth,
+        )
+
+        if response.status_code >= 400:
+            parsed_json: dict[str, Any] | list[Any] | None = None
+            try:
+                parsed = response.json()
+                if isinstance(parsed, (dict, list)):
+                    parsed_json = parsed
+            except Exception:
+                parsed_json = None
+            raise IntegrationRequestError(
+                f"gem: {method} {url} failed with {response.status_code}: {response.text[:300]}",
+                status_code=response.status_code,
+                method=method,
+                url=url,
+                response_text=response.text,
+                response_json=parsed_json,
+            )
+
+        content_type = response.headers.get("content-type", "")
+        if "application/json" in content_type:
+            if not response.text or not response.text.strip():
+                payload: Any = {}
+            else:
+                payload = response.json()
+        elif response.status_code == 204:
+            payload = {}
+        else:
+            payload = response.text
+
+        pagination = _parse_pagination_header(
+            response.headers.get("x-pagination", ""),
+            page=int((params or {}).get("page") or 1),
+            page_size=int((params or {}).get("page_size") or 20),
+            returned_count=len(payload) if isinstance(payload, list) else 1 if payload else 0,
+        )
+        return payload, pagination
+
 
 class MockGemClient:
     def __init__(self) -> None:
@@ -431,6 +671,112 @@ class MockGemClient:
             return user_id.strip()
         return "user_mock_1"
 
+    def list_projects(
+        self,
+        *,
+        owner_user_id: Optional[str] = None,
+        readable_by_user_id: Optional[str] = None,
+        writable_by_user_id: Optional[str] = None,
+        is_archived: Optional[bool] = None,
+        created_after: Optional[int] = None,
+        created_before: Optional[int] = None,
+        sort: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> dict[str, Any]:
+        del readable_by_user_id, writable_by_user_id
+        projects = [_normalize_project(item) for item in self.projects.values()]
+        if owner_user_id:
+            projects = [item for item in projects if str(item.get("user_id") or "") == owner_user_id]
+        if is_archived is not None:
+            projects = [item for item in projects if bool(item.get("is_archived", False)) is is_archived]
+        if created_after is not None:
+            projects = [item for item in projects if int(item.get("created_at") or 0) > created_after]
+        if created_before is not None:
+            projects = [item for item in projects if int(item.get("created_at") or 0) < created_before]
+        projects.sort(key=lambda item: int(item.get("created_at") or 0), reverse=(sort != "asc"))
+        page_items, pagination = _paginate_items(projects, page=page, page_size=page_size)
+        return {
+            "projects": page_items,
+            "pagination": pagination,
+        }
+
+    def get_project(self, project_id: str) -> dict[str, Any]:
+        project = self.projects.get(project_id)
+        if not isinstance(project, dict):
+            raise IntegrationRequestError(
+                f"gem: project not found: {project_id}",
+                status_code=404,
+                method="GET",
+                url=f"/v0/projects/{project_id}",
+            )
+        normalized = _normalize_project(project)
+        return {
+            "project_id": _extract_id(normalized) or project_id,
+            "project": normalized,
+        }
+
+    def list_project_candidates(
+        self,
+        *,
+        project_id: str,
+        page: int = 1,
+        page_size: int = 20,
+        added_after: Optional[int] = None,
+        added_before: Optional[int] = None,
+        sort: Optional[str] = None,
+        include_candidates: bool = True,
+    ) -> dict[str, Any]:
+        project_result = self.get_project(project_id)
+        memberships: list[dict[str, Any]] = []
+        for idx, candidate_id in enumerate(self.project_candidates.get(project_id, []), start=1):
+            added_at = idx
+            if added_after is not None and added_at <= added_after:
+                continue
+            if added_before is not None and added_at >= added_before:
+                continue
+            memberships.append({"candidate_id": candidate_id, "added_at": added_at})
+        memberships.sort(key=lambda item: int(item.get("added_at") or 0), reverse=(sort != "asc"))
+        page_items, pagination = _paginate_items(memberships, page=page, page_size=page_size)
+
+        entries: list[dict[str, Any]] = []
+        unresolved_candidate_ids: list[str] = []
+        for membership in page_items:
+            candidate_id = str(membership.get("candidate_id") or "").strip()
+            candidate = _normalize_candidate(self.candidates.get(candidate_id, {})) if include_candidates else {}
+            if include_candidates and not candidate:
+                unresolved_candidate_ids.append(candidate_id)
+            entries.append(
+                {
+                    "candidate_id": candidate_id,
+                    "added_at": membership.get("added_at"),
+                    "candidate": candidate,
+                }
+            )
+
+        return {
+            "project_id": project_result["project_id"],
+            "project": project_result["project"],
+            "entries": entries,
+            "pagination": pagination,
+            "unresolved_candidate_ids": unresolved_candidate_ids,
+        }
+
+    def get_candidate(self, candidate_id: str) -> dict[str, Any]:
+        candidate = self.candidates.get(candidate_id)
+        if not isinstance(candidate, dict):
+            raise IntegrationRequestError(
+                f"gem: candidate not found: {candidate_id}",
+                status_code=404,
+                method="GET",
+                url=f"/v0/candidates/{candidate_id}",
+            )
+        normalized = _normalize_candidate(candidate)
+        return {
+            "candidate_id": _extract_id(normalized) or candidate_id,
+            "candidate": normalized,
+        }
+
     def create_project(
         self,
         project_name: str,
@@ -439,7 +785,14 @@ class MockGemClient:
     ) -> dict[str, Any]:
         owner_id = self.resolve_user_id(user_id)
         project_id = f"proj_{uuid.uuid4().hex[:8]}"
-        project = {"id": project_id, "name": project_name, "user_id": owner_id, "metadata": metadata or {}}
+        project = {
+            "id": project_id,
+            "name": project_name,
+            "user_id": owner_id,
+            "metadata": metadata or {},
+            "created_at": len(self.projects) + 1,
+            "is_archived": False,
+        }
         self.projects[project_id] = project
         self.project_candidates.setdefault(project_id, [])
         return {"project_id": project_id, "name": project_name, "user_id": owner_id, "provider_response": project}
@@ -452,7 +805,13 @@ class MockGemClient:
     ) -> dict[str, Any]:
         owner_id = self.resolve_user_id(user_id)
         if project_id not in self.projects:
-            self.projects[project_id] = {"id": project_id, "name": project_id, "user_id": owner_id}
+            self.projects[project_id] = {
+                "id": project_id,
+                "name": project_id,
+                "user_id": owner_id,
+                "created_at": len(self.projects) + 1,
+                "is_archived": False,
+            }
             self.project_candidates.setdefault(project_id, [])
 
         mapping: list[dict[str, str]] = []
@@ -463,6 +822,7 @@ class MockGemClient:
                 candidate_id = f"cand_{idx}_{uuid.uuid4().hex[:6]}"
             candidate = dict(profile)
             candidate["id"] = candidate_id
+            candidate.setdefault("created_at", len(self.candidates) + 1)
             self.candidates[candidate_id] = candidate
             resolved_ids.append(candidate_id)
             mapping.append(
@@ -546,3 +906,24 @@ def _is_probably_gem_candidate_id(value: str) -> bool:
         if decoded.startswith("candidates:"):
             return True
     return False
+
+
+def _paginate_items(items: list[dict[str, Any]], *, page: int, page_size: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    safe_page = max(page, 1)
+    safe_page_size = max(page_size, 1)
+    total = len(items)
+    total_pages = max((total + safe_page_size - 1) // safe_page_size, 1)
+    start = (safe_page - 1) * safe_page_size
+    end = start + safe_page_size
+    page_items = items[start:end]
+    pagination = {
+        "total": total,
+        "total_pages": total_pages,
+        "first_page": 1,
+        "last_page": total_pages,
+        "page": safe_page,
+        "next_page": safe_page + 1 if safe_page < total_pages else None,
+        "page_size": safe_page_size,
+        "returned_count": len(page_items),
+    }
+    return page_items, pagination

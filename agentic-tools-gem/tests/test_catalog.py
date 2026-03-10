@@ -11,6 +11,9 @@ EXPECTED_TOOL_IDS = {
     "gem.add_candidate_note",
     "gem.add_profiles_to_project",
     "gem.create_project",
+    "gem.get_candidate",
+    "gem.list_project_candidates",
+    "gem.list_projects",
     "gem.set_custom_value",
 }
 
