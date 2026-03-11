@@ -340,7 +340,7 @@
             "title": "Cursor"
           },
           "size": {
-            "default": 100,
+            "default": 10,
             "maximum": 1000,
             "minimum": 1,
             "title": "Size",

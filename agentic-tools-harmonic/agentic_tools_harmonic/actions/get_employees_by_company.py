@@ -14,7 +14,7 @@ SOURCE = "app/tools/harmonic/actions/get_employees_by_company.py"
 
 class Input(BaseModel):
     company_id_or_urn: str = Field(min_length=1)
-    size: int = Field(default=100, ge=1, le=1000)
+    size: int = Field(default=10, ge=1, le=1000)
     cursor: Optional[str] = None
 
 
@@ -64,7 +64,12 @@ def run(payload: dict[str, Any], preview: bool = False) -> dict[str, Any]:
             "dedupe_report": report,
         }
     )
+    loaded_count = len(normalized.employees)
+    if normalized.count > loaded_count:
+        summary = f"Loaded {loaded_count} of {normalized.count} employees for {normalized.company_id_or_urn}."
+    else:
+        summary = f"Loaded {loaded_count} employees for {normalized.company_id_or_urn}."
     return {
         "output": normalized.model_dump(),
-        "summary": f"Loaded {len(normalized.employees)} employees for {normalized.company_id_or_urn}.",
+        "summary": summary,
     }

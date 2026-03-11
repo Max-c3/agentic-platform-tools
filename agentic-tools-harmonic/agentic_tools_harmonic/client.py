@@ -33,6 +33,9 @@ class HarmonicClient:
         )
         self._search_agent_path = os.getenv("HARMONIC_ENDPOINT_SEARCH_AGENT", "/search/search_agent")
         self._company_employees_path = os.getenv("HARMONIC_ENDPOINT_COMPANY_EMPLOYEES", "/companies/{id_or_urn}/employees")
+        self._persons_path = os.getenv("HARMONIC_ENDPOINT_PERSONS", "/persons")
+        # Harmonic limits batch person lookups to 50 total urn/id query params.
+        self._person_batch_size = max(1, int(os.getenv("HARMONIC_PERSON_BATCH_SIZE", "50")))
         self._team_connections_company_path = os.getenv(
             "HARMONIC_ENDPOINT_TEAM_CONNECTIONS_COMPANY",
             "/companies/{id_or_urn}/userConnections",
@@ -155,22 +158,62 @@ class HarmonicClient:
         self,
         company_id_or_urn: str,
         *,
-        size: int = 100,
+        size: int = 10,
         cursor: Optional[str] = None,
     ) -> dict[str, Any]:
         path = self._company_employees_path.format(id_or_urn=company_id_or_urn)
-        params: dict[str, Any] = {"size": size}
-        if cursor:
-            params["cursor"] = cursor
+        current_offset = _extract_offset_token(cursor)
+        params: dict[str, Any] = {
+            "size": size,
+            "page": current_offset,
+        }
         data = self.http.request("GET", path, params=params)
         raw_results = _extract_results(data)
-        employees = [_normalize_person_result(item) for item in raw_results if isinstance(item, dict)]
+        employees = self._normalize_company_employee_results(raw_results)
+        count = _extract_count(data, default=len(employees))
         return {
             "company_id_or_urn": company_id_or_urn,
-            "count": _extract_count(data, default=len(employees)),
+            "count": count,
             "employees": employees,
-            "page_info": _extract_page_info(data),
+            "page_info": _extract_employees_page_info(
+                data,
+                requested_offset=current_offset,
+                size=size,
+                count=count,
+                returned_count=len(raw_results),
+            ),
         }
+
+    def _normalize_company_employee_results(self, raw_results: list[Any]) -> list[dict[str, Any]]:
+        if not raw_results:
+            return []
+
+        hydrated_people: dict[str, dict[str, Any]] = {}
+        person_urns = [item.strip() for item in raw_results if isinstance(item, str) and item.strip()]
+        if person_urns:
+            for item in self._get_people_by_urns(person_urns):
+                person_urn = str(item.get("person_urn") or "")
+                if person_urn and person_urn not in hydrated_people:
+                    hydrated_people[person_urn] = item
+
+        employees: list[dict[str, Any]] = []
+        for item in raw_results:
+            if isinstance(item, dict):
+                employees.append(_normalize_person_result(item))
+                continue
+            if isinstance(item, str):
+                employees.append(hydrated_people.get(item) or _normalize_person_reference(item))
+        return employees
+
+    def _get_people_by_urns(self, person_urns: list[str]) -> list[dict[str, Any]]:
+        people: list[dict[str, Any]] = []
+        for batch in _chunked(person_urns, self._person_batch_size):
+            data = self.http.request("GET", self._persons_path, params={"urns": batch})
+            raw_people = data if isinstance(data, list) else _extract_results(data)
+            for item in raw_people:
+                if isinstance(item, dict):
+                    people.append(_normalize_person_result(item))
+        return people
 
     def get_team_network_connections_to_company(
         self,
@@ -312,7 +355,7 @@ class MockHarmonicClient:
         self,
         company_id_or_urn: str,
         *,
-        size: int = 100,
+        size: int = 10,
         cursor: Optional[str] = None,
     ) -> dict[str, Any]:
         del cursor
@@ -465,6 +508,18 @@ def _normalize_person_result(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _normalize_person_reference(person_urn: str) -> dict[str, Any]:
+    normalized_urn = person_urn.strip()
+    return {
+        "candidate_id": normalized_urn,
+        "person_urn": normalized_urn,
+        "name": "",
+        "email": "",
+        "linkedin": "",
+        "raw": {"entity_urn": normalized_urn},
+    }
+
+
 def _normalize_company_result(item: Any) -> dict[str, Any]:
     if isinstance(item, str):
         return {
@@ -521,3 +576,36 @@ def _extract_linkedin(item: dict[str, Any]) -> str:
         if isinstance(value, str):
             return value
     return ""
+
+
+def _chunked(values: list[str], size: int) -> list[list[str]]:
+    return [values[index : index + size] for index in range(0, len(values), size)]
+
+
+def _extract_offset_token(cursor: Optional[str]) -> int:
+    if cursor is None:
+        return 0
+    try:
+        return max(0, int(str(cursor).strip()))
+    except ValueError:
+        return 0
+
+
+def _extract_employees_page_info(
+    data: Any,
+    *,
+    requested_offset: int,
+    size: int,
+    count: int,
+    returned_count: int,
+) -> dict[str, Any]:
+    page_info = _extract_page_info(data)
+    if any(page_info.get(key) is not None for key in ("current", "next")) or page_info.get("has_next"):
+        return page_info
+
+    has_next = requested_offset + returned_count < count and returned_count > 0
+    return {
+        "has_next": has_next,
+        "next": str(requested_offset + returned_count) if has_next else None,
+        "current": str(requested_offset),
+    }
