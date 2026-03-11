@@ -38,7 +38,7 @@ class Output(BaseModel):
         source_path=SOURCE,
         function_name="run",
         owner="recruiting-platform",
-        version="1.0.0",
+        version="2.1.0",
         description="List candidates in a Gem project and optionally hydrate each entry with full candidate data.",
         input_schema=Input.model_json_schema(),
         output_schema=Output.model_json_schema(),

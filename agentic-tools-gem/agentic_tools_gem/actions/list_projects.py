@@ -37,7 +37,7 @@ class Output(BaseModel):
         source_path=SOURCE,
         function_name="run",
         owner="recruiting-platform",
-        version="1.0.0",
+        version="2.1.0",
         description="List existing Gem projects with pagination and optional access filters.",
         input_schema=Input.model_json_schema(),
         output_schema=Output.model_json_schema(),

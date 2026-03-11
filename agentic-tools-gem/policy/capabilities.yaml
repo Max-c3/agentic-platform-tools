@@ -1,4 +1,17 @@
 tools:
+  gem.list_users:
+    read_write: read
+    allowed_entities: [user]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 100
+      concurrency: 3
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
   gem.list_projects:
     read_write: read
     allowed_entities: [project]
@@ -12,9 +25,61 @@ tools:
     forbidden_actions: []
     required_audit_fields: [run_id, step_id, tool_id]
 
+  gem.find_projects:
+    read_write: read
+    allowed_entities: [project]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.get_project:
+    read_write: read
+    allowed_entities: [project]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 20
+      concurrency: 3
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
   gem.list_project_candidates:
     read_write: read
     allowed_entities: [project, candidate]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.list_candidates:
+    read_write: read
+    allowed_entities: [candidate]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 100
+      concurrency: 3
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.find_candidates:
+    read_write: read
+    allowed_entities: [candidate]
     integration: gem
     approval_mode: none
     risk_tier: low
@@ -38,11 +103,141 @@ tools:
     forbidden_actions: []
     required_audit_fields: [run_id, step_id, tool_id]
 
+  gem.list_candidate_notes:
+    read_write: read
+    allowed_entities: [candidate, note]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.list_uploaded_resumes:
+    read_write: read
+    allowed_entities: [candidate, resume]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.list_custom_fields:
+    read_write: read
+    allowed_entities: [custom_field]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.list_custom_field_options:
+    read_write: read
+    allowed_entities: [custom_field, option]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.list_project_fields:
+    read_write: read
+    allowed_entities: [project_field]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.list_project_field_options:
+    read_write: read
+    allowed_entities: [project_field, option]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.list_sequences:
+    read_write: read
+    allowed_entities: [sequence]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.get_sequence:
+    read_write: read
+    allowed_entities: [sequence]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 30
+      batch_size: 20
+      concurrency: 3
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
+  gem.list_project_membership_log:
+    read_write: read
+    allowed_entities: [project, candidate]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 100
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id]
+
   gem.create_project:
     read_write: write
     allowed_entities: [project]
     integration: gem
-    approval_mode: checkpoint
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 15
+      batch_size: 20
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.update_project:
+    read_write: write
+    allowed_entities: [project]
+    integration: gem
+    approval_mode: none
     risk_tier: low
     limits:
       rate_per_minute: 15
@@ -55,7 +250,7 @@ tools:
     read_write: write
     allowed_entities: [candidate, project]
     integration: gem
-    approval_mode: checkpoint
+    approval_mode: none
     risk_tier: low
     limits:
       rate_per_minute: 20
@@ -64,11 +259,50 @@ tools:
     forbidden_actions: []
     required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
 
+  gem.remove_candidates_from_project:
+    read_write: write
+    allowed_entities: [candidate, project]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 50
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.create_candidate:
+    read_write: write
+    allowed_entities: [candidate]
+    integration: gem
+    approval_mode: none
+    risk_tier: high
+    limits:
+      rate_per_minute: 15
+      batch_size: 20
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.update_candidate:
+    read_write: write
+    allowed_entities: [candidate]
+    integration: gem
+    approval_mode: none
+    risk_tier: high
+    limits:
+      rate_per_minute: 15
+      batch_size: 20
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
   gem.add_candidate_note:
     read_write: write
     allowed_entities: [candidate, note]
     integration: gem
-    approval_mode: checkpoint
+    approval_mode: none
     risk_tier: high
     limits:
       rate_per_minute: 20
@@ -81,11 +315,115 @@ tools:
     read_write: write
     allowed_entities: [candidate, custom_value]
     integration: gem
-    approval_mode: checkpoint
+    approval_mode: none
     risk_tier: high
     limits:
       rate_per_minute: 20
       batch_size: 50
       concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.set_project_field_value:
+    read_write: write
+    allowed_entities: [project, project_field]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 20
+      batch_size: 50
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.create_custom_field:
+    read_write: write
+    allowed_entities: [custom_field]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 10
+      batch_size: 20
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.add_custom_field_options:
+    read_write: write
+    allowed_entities: [custom_field, option]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 10
+      batch_size: 50
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.update_custom_field_option:
+    read_write: write
+    allowed_entities: [custom_field, option]
+    integration: gem
+    approval_mode: none
+    risk_tier: high
+    limits:
+      rate_per_minute: 10
+      batch_size: 50
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.create_project_field:
+    read_write: write
+    allowed_entities: [project_field]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 10
+      batch_size: 20
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.create_project_field_option:
+    read_write: write
+    allowed_entities: [project_field, option]
+    integration: gem
+    approval_mode: none
+    risk_tier: low
+    limits:
+      rate_per_minute: 10
+      batch_size: 50
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.update_project_field_option:
+    read_write: write
+    allowed_entities: [project_field, option]
+    integration: gem
+    approval_mode: none
+    risk_tier: high
+    limits:
+      rate_per_minute: 10
+      batch_size: 50
+      concurrency: 2
+    forbidden_actions: []
+    required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
+
+  gem.upload_resume:
+    read_write: write
+    allowed_entities: [candidate, resume]
+    integration: gem
+    approval_mode: none
+    risk_tier: high
+    limits:
+      rate_per_minute: 10
+      batch_size: 10
+      concurrency: 1
     forbidden_actions: []
     required_audit_fields: [run_id, step_id, tool_id, idempotency_key]
