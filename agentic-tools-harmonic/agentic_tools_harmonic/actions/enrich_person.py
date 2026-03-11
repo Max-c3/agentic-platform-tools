@@ -48,7 +48,7 @@ class Output(BaseModel):
         input_schema=Input.model_json_schema(),
         output_schema=Output.model_json_schema(),
         side_effects="Triggers enrichment process in Harmonic.",
-        approval_class="checkpoint_low",
+        approval_class="none",
         common_failures=["upstream_unavailable", "invalid_identifier"],
         examples=["linkedin_url='https://linkedin.com/in/example'"],
         anti_patterns=["empty payload and no identifiers"],
@@ -75,7 +75,7 @@ def run(payload: dict[str, Any], preview: bool = False) -> dict[str, Any]:
     if preview:
         preview_output = Output(
             status="preview",
-            message="Person enrichment will be triggered on checkpoint approval.",
+            message="Person enrichment will be triggered on approval.",
             enrichment_urn="preview:person-enrichment",
             enriched_person_urn=request_payload.get("person_urn", ""),
             raw={"preview": True, "request_payload": request_payload},

@@ -32,6 +32,7 @@ class RunRequest(BaseModel):
 class ToolCallContext(BaseModel):
     run_id: str
     step_id: str
+    request_id: str = ""
     subtask_id: str
     allowed_tool_ids: list[str]
 

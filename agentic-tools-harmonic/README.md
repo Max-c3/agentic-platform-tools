@@ -1,3 +1,3 @@
 # agentic-tools-harmonic
 
-Harmonic tool package with staged enrichment actions and read-only search helpers.
+Harmonic tool package with direct enrichment actions and read-only search helpers.

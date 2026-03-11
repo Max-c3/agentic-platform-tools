@@ -16,7 +16,7 @@ tools:
     read_write: write
     allowed_entities: [candidate, profile]
     integration: harmonic
-    approval_mode: checkpoint
+    approval_mode: none
     risk_tier: low
     limits:
       rate_per_minute: 30
@@ -29,7 +29,7 @@ tools:
     read_write: write
     allowed_entities: [company]
     integration: harmonic
-    approval_mode: checkpoint
+    approval_mode: none
     risk_tier: low
     limits:
       rate_per_minute: 30

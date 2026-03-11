@@ -4,7 +4,7 @@
       "anti_patterns": [
         "empty payload and no identifiers"
       ],
-      "approval_class": "checkpoint_low",
+      "approval_class": "none",
       "common_failures": [
         "upstream_unavailable",
         "invalid_identifier"
@@ -117,7 +117,7 @@
       "anti_patterns": [
         "empty payload and no identifiers"
       ],
-      "approval_class": "checkpoint_low",
+      "approval_class": "none",
       "common_failures": [
         "upstream_unavailable",
         "invalid_identifier"

@@ -1,3 +1,3 @@
 # agentic-tools-gem
 
-Gem tool package with staged write support through the shared checkpoint runtime.
+Gem tool package with direct write support through the shared MCP runtime.

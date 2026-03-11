@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import json
-import threading
 import uuid
 from dataclasses import dataclass
 from typing import Any
 
 from agentic_tools_core.errors import PolicyError, RateLimitError, ScopeError, ToolVerificationError
-from agentic_tools_core.models import Checkpoint, ReceiptStatus, RiskTier, ToolCallContext, WriteAction, WriteReceipt
+from agentic_tools_core.models import ReceiptStatus, ToolCallContext, WriteReceipt
 from agentic_tools_core.policy import PolicyStore, ensure_audit_fields
 from agentic_tools_core.run_store import RunStore
 from agentic_tools_core.runtime.rate_control import RateController
@@ -85,165 +84,127 @@ class ToolGateway:
         payload["verification"] = verification.model_dump()
         return payload
 
-    def stage_write(self, tool_id: str, tool_input: dict[str, Any], context: ToolCallContext) -> WriteAction:
+    def execute_write(self, tool_id: str, tool_input: dict[str, Any], context: ToolCallContext) -> dict[str, Any]:
         self._validate_access(tool_id, context, expected_mode="write")
         policy = self.policy_store.get(tool_id)
-        preview = self.registry.execute(tool_id=tool_id, tool_input=tool_input, preview=True)
-        verification = self.verifier.verify(
-            tool_id=tool_id,
-            tool_input=tool_input,
-            output=preview.output,
-            preview=True,
-            goal_contract=None,
-        )
-        if verification.status == "fail":
-            raise ToolVerificationError(
-                _verification_failure_message(verification),
-                verification=verification.model_dump(),
+        idempotency_key = _idempotency_key(context=context, tool_id=tool_id)
+        audit_payload = {
+            "run_id": context.run_id,
+            "step_id": context.step_id,
+            "tool_id": tool_id,
+            "idempotency_key": idempotency_key,
+        }
+        ensure_audit_fields(policy, audit_payload)
+
+        existing_receipt_id = self.run_store.find_idempotent_receipt(idempotency_key, tool_input)
+        if existing_receipt_id:
+            existing = self.run_store.get_receipt_by_id(existing_receipt_id)
+            if existing is not None:
+                duplicate = WriteReceipt(
+                    receipt_id=str(uuid.uuid4()),
+                    checkpoint_id="",
+                    run_id=context.run_id,
+                    action_id=context.step_id,
+                    tool_id=tool_id,
+                    idempotency_key=idempotency_key,
+                    status=ReceiptStatus.DUPLICATE,
+                    result={"existing_receipt_id": existing_receipt_id},
+                )
+                self.run_store.put_receipt(duplicate)
+                prior_result = dict(existing.result)
+                verification = prior_result.pop("_verification", {})
+                return {
+                    "output": prior_result,
+                    "summary": f"Skipped duplicate execution for {tool_id}.",
+                    "verification": verification,
+                    "receipt": _receipt_payload(duplicate),
+                }
+
+        try:
+            preview = self.registry.execute(tool_id=tool_id, tool_input=tool_input, preview=True)
+            preview_verification = self.verifier.verify(
+                tool_id=tool_id,
+                tool_input=tool_input,
                 output=preview.output,
+                preview=True,
+                goal_contract=None,
             )
-        action = WriteAction(
-            action_id=str(uuid.uuid4()),
-            run_id=context.run_id,
-            step_id=context.step_id,
-            tool_id=tool_id,
-            idempotency_key=f"{context.run_id}:{context.step_id}:{tool_id}",
-            input_payload=tool_input,
-            risk_tier=RiskTier(policy.risk_tier),
-            summary=preview.summary,
-            preview_output=preview.output,
-            compensation=preview.compensation,
-            verification=verification.model_dump(),
-        )
-        return action
+            if preview_verification.status == "fail":
+                raise ToolVerificationError(
+                    _verification_failure_message(preview_verification),
+                    verification=preview_verification.model_dump(),
+                    output=preview.output,
+                )
 
-    def execute_checkpoint(self, checkpoint: Checkpoint) -> list[WriteReceipt]:
-        receipts: list[WriteReceipt] = []
-        succeeded_receipts: list[WriteReceipt] = []
-        replacements: dict[str, Any] = {}
-
-        for action in checkpoint.actions:
-            resolved_payload = _apply_replacements(action.input_payload, replacements)
-            policy = self.policy_store.get(action.tool_id)
-            audit_payload = {
-                "run_id": action.run_id,
-                "step_id": action.step_id,
-                "tool_id": action.tool_id,
-                "idempotency_key": action.idempotency_key,
-            }
-            ensure_audit_fields(policy, audit_payload)
-
-            existing_receipt_id = self.run_store.find_idempotent_receipt(action.idempotency_key, resolved_payload)
-            if existing_receipt_id:
-                existing = self.run_store.get_receipt_by_id(existing_receipt_id)
-                if existing is not None:
-                    duplicate = WriteReceipt(
-                        receipt_id=str(uuid.uuid4()),
-                        checkpoint_id=checkpoint.checkpoint_id,
-                        run_id=checkpoint.run_id,
-                        action_id=action.action_id,
-                        tool_id=action.tool_id,
-                        idempotency_key=action.idempotency_key,
-                        status=ReceiptStatus.DUPLICATE,
-                        result={"existing_receipt_id": existing_receipt_id},
-                    )
-                    self.run_store.put_receipt(duplicate)
-                    receipts.append(duplicate)
-                    if existing.status == ReceiptStatus.SUCCESS:
-                        _collect_replacements(action.preview_output or {}, existing.result, replacements)
-                    continue
-
-            try:
-                semaphore = self.rate_control.semaphore(action.tool_id)
-                with semaphore:
-                    result = self.registry.execute(tool_id=action.tool_id, tool_input=resolved_payload, preview=False)
-                verification = self.verifier.verify(
-                    tool_id=action.tool_id,
-                    tool_input=resolved_payload,
+            semaphore = self.rate_control.semaphore(tool_id)
+            with semaphore:
+                result = self.registry.execute(tool_id=tool_id, tool_input=tool_input, preview=False)
+            verification = self.verifier.verify(
+                tool_id=tool_id,
+                tool_input=tool_input,
+                output=result.output,
+                preview=False,
+                goal_contract=None,
+            )
+            if verification.status == "fail":
+                raise ToolVerificationError(
+                    _verification_failure_message(verification),
+                    verification=verification.model_dump(),
                     output=result.output,
-                    preview=False,
-                    goal_contract=None,
                 )
-                if verification.status == "fail":
-                    raise ToolVerificationError(
-                        _verification_failure_message(verification),
-                        verification=verification.model_dump(),
-                        output=result.output,
-                    )
-                receipt_result = dict(result.output)
-                receipt_result["_verification"] = verification.model_dump()
-                receipt = WriteReceipt(
-                    receipt_id=str(uuid.uuid4()),
-                    checkpoint_id=checkpoint.checkpoint_id,
-                    run_id=checkpoint.run_id,
-                    action_id=action.action_id,
-                    tool_id=action.tool_id,
-                    idempotency_key=action.idempotency_key,
-                    status=ReceiptStatus.SUCCESS,
-                    result=receipt_result,
-                )
-                self.run_store.put_receipt(receipt)
-                self.run_store.remember_idempotency(action.idempotency_key, receipt.receipt_id, resolved_payload)
-                receipts.append(receipt)
-                succeeded_receipts.append(receipt)
-                _collect_replacements(action.preview_output or {}, result.output, replacements)
-            except Exception as exc:
-                failed = WriteReceipt(
-                    receipt_id=str(uuid.uuid4()),
-                    checkpoint_id=checkpoint.checkpoint_id,
-                    run_id=checkpoint.run_id,
-                    action_id=action.action_id,
-                    tool_id=action.tool_id,
-                    idempotency_key=action.idempotency_key,
-                    status=ReceiptStatus.FAILED,
-                    result={"error": str(exc)},
-                )
-                self.run_store.put_receipt(failed)
-                receipts.append(failed)
-                receipts.extend(self._compensate(checkpoint, succeeded_receipts))
-                break
 
-        return receipts
-
-    def _compensate(self, checkpoint: Checkpoint, succeeded_receipts: list[WriteReceipt]) -> list[WriteReceipt]:
-        compensated: list[WriteReceipt] = []
-        for prior in reversed(succeeded_receipts):
+            receipt_result = dict(result.output)
+            receipt_result["_verification"] = verification.model_dump()
             receipt = WriteReceipt(
                 receipt_id=str(uuid.uuid4()),
-                checkpoint_id=checkpoint.checkpoint_id,
-                run_id=checkpoint.run_id,
-                action_id=prior.action_id,
-                tool_id=prior.tool_id,
-                idempotency_key=prior.idempotency_key,
-                status=ReceiptStatus.COMPENSATED,
-                result={"message": "Logical compensation recorded"},
+                checkpoint_id="",
+                run_id=context.run_id,
+                action_id=context.step_id,
+                tool_id=tool_id,
+                idempotency_key=idempotency_key,
+                status=ReceiptStatus.SUCCESS,
+                result=receipt_result,
             )
             self.run_store.put_receipt(receipt)
-            compensated.append(receipt)
-        return compensated
+            self.run_store.remember_idempotency(idempotency_key, receipt.receipt_id, tool_input)
+            return {
+                "output": result.output,
+                "summary": result.summary,
+                "verification": verification.model_dump(),
+                "receipt": _receipt_payload(receipt),
+            }
+        except Exception as exc:
+            failed_result = {"error": str(exc)}
+            if isinstance(exc, ToolVerificationError):
+                failed_result["verification"] = exc.verification
+                failed_result["output"] = exc.output
+            failed = WriteReceipt(
+                receipt_id=str(uuid.uuid4()),
+                checkpoint_id="",
+                run_id=context.run_id,
+                action_id=context.step_id,
+                tool_id=tool_id,
+                idempotency_key=idempotency_key,
+                status=ReceiptStatus.FAILED,
+                result=failed_result,
+            )
+            self.run_store.put_receipt(failed)
+            raise
 
 
-def _collect_replacements(preview: Any, actual: Any, replacements: dict[str, Any]) -> None:
-    if isinstance(preview, dict) and isinstance(actual, dict):
-        for key in preview.keys() & actual.keys():
-            _collect_replacements(preview[key], actual[key], replacements)
-        return
-    if isinstance(preview, list) and isinstance(actual, list):
-        for p_item, a_item in zip(preview, actual):
-            _collect_replacements(p_item, a_item, replacements)
-        return
-    if isinstance(preview, str) and preview and preview != str(actual):
-        replacements[preview] = actual
+def _idempotency_key(*, context: ToolCallContext, tool_id: str) -> str:
+    request_id = context.request_id or context.step_id
+    return f"{request_id}:{tool_id}"
 
 
-def _apply_replacements(value: Any, replacements: dict[str, Any]) -> Any:
-    if isinstance(value, dict):
-        return {key: _apply_replacements(item, replacements) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_apply_replacements(item, replacements) for item in value]
-    if isinstance(value, str) and value in replacements:
-        return replacements[value]
-    return value
+def _receipt_payload(receipt: WriteReceipt) -> dict[str, Any]:
+    return {
+        "receipt_id": receipt.receipt_id,
+        "tool_id": receipt.tool_id,
+        "status": receipt.status.value,
+        "idempotency_key": receipt.idempotency_key,
+        "created_at": receipt.created_at,
+    }
 
 
 def _verification_failure_message(verification: Any) -> str:

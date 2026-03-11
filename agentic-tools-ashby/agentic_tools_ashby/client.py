@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 import os
 import re
+import time
 from typing import Any, Optional
 
 import httpx
@@ -53,6 +54,8 @@ class AshbyClient:
         self._exact_max_pages = int(os.getenv("ASHBY_EXACT_MAX_PAGES", "1000"))
         self._history_page_size = int(os.getenv("ASHBY_APPLICATION_HISTORY_PAGE_SIZE", "100"))
         self._history_max_pages = int(os.getenv("ASHBY_APPLICATION_HISTORY_MAX_PAGES", "10"))
+        self._request_retries = int(os.getenv("ASHBY_REQUEST_RETRIES", "3"))
+        self._retry_backoff_seconds = float(os.getenv("ASHBY_RETRY_BACKOFF_SECONDS", "1.0"))
         self._server_filters = _load_server_filters()
         self._expand = _load_expand_fields()
         self._application_history_cache: dict[str, list[dict[str, Any]]] = {}
@@ -159,14 +162,7 @@ class AshbyClient:
             if self._expand:
                 payload["expand"] = self._expand
 
-            try:
-                data = self.http.request("POST", self._application_endpoint, json_body=payload)
-            except IntegrationRequestError:
-                if "filters" in payload:
-                    payload.pop("filters", None)
-                    data = self.http.request("POST", self._application_endpoint, json_body=payload)
-                else:
-                    raise
+            data = self._request_json(self._application_endpoint, payload, allow_filter_fallback=True)
             scanned_pages += 1
             for item in _extract_results(data):
                 scanned_records += 1
@@ -284,7 +280,7 @@ class AshbyClient:
             if cursor:
                 payload["cursor"] = cursor
             try:
-                data = self.http.request("POST", "/application.listHistory", json_body=payload)
+                data = self._request_json("/application.listHistory", payload, allow_filter_fallback=False)
             except IntegrationRequestError:
                 return []
             page_items = _extract_results(data)
@@ -294,6 +290,34 @@ class AshbyClient:
                 break
             seen_cursors.add(cursor)
         return history
+
+    def _request_json(self, path: str, payload: dict[str, Any], *, allow_filter_fallback: bool) -> Any:
+        request_payload = dict(payload)
+        attempts = max(1, self._request_retries)
+        last_error: IntegrationRequestError | None = None
+
+        for attempt in range(attempts):
+            try:
+                return self.http.request("POST", path, json_body=request_payload)
+            except IntegrationRequestError as exc:
+                last_error = exc
+                if allow_filter_fallback and "filters" in request_payload:
+                    request_payload.pop("filters", None)
+                    allow_filter_fallback = False
+                    continue
+            except httpx.HTTPError as exc:
+                last_error = IntegrationRequestError(
+                    f"ashby: POST {path} failed: {exc}",
+                    method="POST",
+                    url=f"{self.base_url}/{path.lstrip('/')}",
+                )
+
+            if attempt + 1 < attempts:
+                time.sleep(self._retry_backoff_seconds * (attempt + 1))
+
+        if last_error is not None:
+            raise last_error
+        raise IntegrationRequestError(f"ashby: POST {path} failed without a recoverable response.")
 
     def audit_hire_coverage(
         self,

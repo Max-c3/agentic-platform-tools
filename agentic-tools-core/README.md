@@ -1,3 +1,3 @@
 # agentic-tools-core
 
-Shared contracts, registry, policy handling, verification, and checkpoint runtime for the split recruiting tool repos.
+Shared contracts, registry, policy handling, verification, and direct-write runtime support for the split recruiting tool repos.

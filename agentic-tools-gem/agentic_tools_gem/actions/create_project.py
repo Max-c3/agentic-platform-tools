@@ -37,7 +37,7 @@ class Output(BaseModel):
         input_schema=Input.model_json_schema(),
         output_schema=Output.model_json_schema(),
         side_effects="Creates a project in Gem.",
-        approval_class="checkpoint_low",
+        approval_class="none",
         common_failures=["invalid_project_name"],
         examples=["project_name='Backend Hiring Sprint'"],
         anti_patterns=["project_name too short"],

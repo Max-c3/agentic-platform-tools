@@ -1098,8 +1098,6 @@ def _extract_hire_timestamp(hire: dict[str, Any], *, sort_by: str) -> float | No
             _as_str(hire.get("hired_at")),
             _as_str(application.get("hiredAt")),
             _as_str(application.get("hiredDate")),
-            _as_str(application.get("updatedAt")),
-            _as_str(application.get("createdAt")),
         ]
     for value in candidates:
         if not value:

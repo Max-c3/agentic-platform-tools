@@ -39,7 +39,7 @@ class Output(BaseModel):
         input_schema=Input.model_json_schema(),
         output_schema=Output.model_json_schema(),
         side_effects="Writes custom field to Gem candidate profile.",
-        approval_class="checkpoint_high",
+        approval_class="none",
         common_failures=["invalid_key"],
         examples=["key='priority_tier', value='A'"],
         anti_patterns=["empty key"],
