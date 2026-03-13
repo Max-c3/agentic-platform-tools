@@ -39,7 +39,7 @@ class Output(BaseModel):
         input_schema=Input.model_json_schema(),
         output_schema=Output.model_json_schema(),
         side_effects="Writes candidates into Gem project membership.",
-        approval_class="checkpoint_low",
+        approval_class="none",
         common_failures=["invalid_project_id", "profile_validation_error"],
         examples=["project_id='proj_123'"],
         anti_patterns=["profiles empty"],

@@ -58,6 +58,21 @@ def test_generated_catalog_matches_registry(tmp_path: Path) -> None:
     assert {tool["tool_id"] for tool in payload["tools"]} == EXPECTED_TOOL_IDS
 
 
+def test_checked_in_catalog_matches_generated_catalog(tmp_path: Path) -> None:
+    generated = generate_catalog(tmp_path / "tool_catalog.json")
+    expected = json.loads(Path("tool_catalog.json").read_text())
+    payload = json.loads(generated.read_text())
+    assert payload == expected
+
+
+def test_write_tools_do_not_advertise_checkpoint_approvals() -> None:
+    registry = ToolRegistry()
+    register_tools(registry)
+    write_definitions = [item for item in registry.list_definitions() if item.integration == "gem" and item.is_write]
+    assert write_definitions
+    assert all(item.approval_class == "none" for item in write_definitions)
+
+
 def test_checked_in_catalog_has_required_fields() -> None:
     payload = json.loads(Path("tool_catalog.json").read_text())
     required = {

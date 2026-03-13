@@ -37,7 +37,7 @@ class Output(BaseModel):
         input_schema=Input.model_json_schema(),
         output_schema=Output.model_json_schema(),
         side_effects="Writes a note to Gem candidate profile.",
-        approval_class="checkpoint_high",
+        approval_class="none",
         common_failures=["candidate_not_found"],
         examples=["candidate_id='c1', note='Strong fit'"],
         anti_patterns=["empty note"],
